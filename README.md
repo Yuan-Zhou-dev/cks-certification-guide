@@ -1,7 +1,7 @@
 # Ultimate Certified Kubernetes Security Specialist (CKS) Preparation Guide - V1.31 (2024)
 
 
-This guide is part of the [Complete CKS Certification Course](https://techiescamp.com/p/certified-kubernetes-administrator-course)
+This guide is part of the [Complete CKS Certification Course]()
 
 ## CKS Exam Overview
 
@@ -10,26 +10,23 @@ To pass the exam, candidates need to achieve a score of at least 66%.
 The exam will be on Kubernetes version 1.31.
 Once the certificate is earned, the CKS certification remains valid for 2 years. The cost to take the exam is $395 USD.
 
->**Important Note:** The CKS exam is updating after September 15 2024, with new topics and a focus on real-world Kubernetes skills like Gateway API, Helm, Kustomize, CRDs & Operators. This guide is based on the new CKA syllabus. You can read more about the exam changes here [CKA Exam Changes](https://blog.techiescamp.com/cka-exam-updates/)
+<!-- >**Important Note:** The CKS exam is updating after September 15 2024, with new topics and a focus on real-world Kubernetes skills like Gateway API, Helm, Kustomize, CRDs & Operators. This guide is based on the new CKA syllabus. You can read more about the exam changes here [CKS Exam Changes](https://blog.techiescamp.com/cka-exam-updates/) -->
 
 
 ## Table of Contents
 
-1. [Cluster Architecture, Installation & Configuration (25%)](#1-cluster-architecture-installation--configuration-25)
-   - [Manage role based access control (RBAC)](#manage-role-based-access-control-rbac)
-   - [Prepare underlying infrastructure for installing a Kubernetes cluster](#prepare-underlying-infrastructure-for-installing-a-kubernetes-cluster)
-   - [Create and manage Kubernetes clusters using kubeadm](#create-and-manage-kubernetes-clusters-using-kubeadm)
-   - [Manage the lifecycle of Kubernetes clusters](#manage-the-lifecycle-of-kubernetes-clusters)
-   - [Use Helm and Kustomize to install cluster components](#use-helm-and-kustomize-to-install-cluster-components)
-   - [Understand extension interfaces (CNI, CSI, CRI, etc.)](#understand-extension-interfaces-cni-csi-cri-etc)
-   - [Understand CRDs, install and configure operators](#understand-crds-install-and-configure-operators)
+1. [Cluster Setup (15%)](#)
+   - [Use Network security policies to restrict cluster level access](#)
+   - [Use CIS benchmark to review the security configuration of Kubernetes components (etcd, kubelet, kubedns, kubeapi)](#)
+   - [Properly set up Ingress with TLS](#)
+   - [Protect node metadata and endpoints](#)
+   - [Verify platform binaries before deploying](#)
 
-2. [Workloads & Scheduling (15%)](#2-workloads--scheduling-15)
-   - [Understand deployments and how to perform rolling update and rollbacks](#understand-deployments-and-how-to-perform-rolling-update-and-rollbacks)
-   - [Use ConfigMaps and Secrets to configure applications](#use-configmaps-and-secrets-to-configure-applications)
-   - [Configure workload autoscaling](#configure-workload-autoscaling)
-   - [Understand the primitives used to create robust, self-healing, application deployments](#understand-the-primitives-used-to-create-robust-self-healing-application-deployments)
-   - [Configure Pod admission and scheduling (limits, node affinity, etc.)](#configure-pod-admission-and-scheduling-limits-node-affinity-etc)
+2. [Cluster Hardening (15%)](#)
+   - [Use Role Based Access Controls to minimize exposure](#)
+   - [Exercise caution in using service accounts e.g. disable defaults, minimize permissions on newly created ones](#)
+   - [Restrict access to Kubernetes API](#)
+   - [Upgrade Kubernetes to avoid vulnerabilities](#)
 
 3. [Storage (10%)](#3-storage-10)
    - [Implement storage classes and dynamic volume provisioning](#implement-storage-classes-and-dynamic-volume-provisioning)
@@ -51,9 +48,9 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Manage and evaluate container output streams](#manage-and-evaluate-container-output-streams)
    - [Troubleshoot services and networking](#troubleshoot-services-and-networking)
 
-## CKA Exam Detailed Study Guide & References
+## CKs Exam Detailed Study Guide & References
 
-CKA Certification Exam has the following key domains:
+CKs Certification Exam has the following key domains:
 
 ## 1. Cluster Setup (15%)
 
@@ -62,7 +59,7 @@ Following are the subtopics under Cluster Setup
 ### Network Policy.
 > [Network Policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/)  : Understand the restriction of the Pod to Pod communication.
 
-```bash
+```yaml
 # Create a Deny all Network Policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -76,7 +73,7 @@ spec:
   - Egress
 ```
 
-```bash
+```yaml
 # Protecting Metadata Server access to the cloud provider Kubernetes cluster using Network Policy
 
 apiVersion: networking.k8s.io/v1
@@ -114,7 +111,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt
 # Create a TLS secret with Certificat & Key
 kubectl -n tls create secret tls tls-secret --cert=tls.crt --key=tls.key
 ```
-```bash
+```yaml
 # Create Ingress with TLS
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -148,6 +145,23 @@ spec:
               number: 80
 
 ```
+### Verify Kubernetes Platform Binaries
+
+```bash
+# Verify the Platform Binaries using Hash
+
+kubectl --version
+
+sha512sum $(which kubectl)
+
+wget https://dl.k8s.io/v1.31.0/kubernetes-server-linux-amd64.tar.gz
+
+tar -xvf kubernetes-server-linux-amd64.tar.gz
+
+sha512sum kubernetes/server/bin/kubelet
+```
+
+## 2. Cluster Hardening (15%)
 
 
 
