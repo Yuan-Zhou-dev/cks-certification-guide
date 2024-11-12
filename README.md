@@ -163,5 +163,74 @@ sha512sum kubernetes/server/bin/kubelet
 
 ## 2. Cluster Hardening (15%)
 
+### RBAC, Certificate & Certificate Signing Request
+
+```bash
+# Create private key
+openssl genrsa -out myuser.key 2048
+openssl req -new -key myuser.key -out myuser.csr -subj "/CN=myuser"
+
+# Create Certificate Signing Request (CSR)
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: myuser
+spec:
+  request: 
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 86400  # one day
+  usages:
+  - client auth
+
+# Copy base64 encoded CSR file content
+cat myuser.csr | base64 | tr -d "\n"
+
+# Paste the content to `spec.request`
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: myuser
+spec:
+  request: <base64 encoded csr content>
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 86400  # one day
+  usages:
+  - client auth
+
+# Apply the CSR manifest
+kubectl apply -f csr.yaml
+
+# Get the list of CSR
+kubectl get csr
+
+# Approve the CSR
+kubectl certificate approve myuser
+
+# Export the certificate
+kubectl get csr myuser -o jsonpath='{.status.certificate}'| base64 -d > myuser.crt
+
+# Create Role
+kubectl create role developer --verb=create --verb=get --verb=list --verb=update --verb=delete --resource=pods
+
+# Create Role Binding
+kubectl create rolebinding developer-binding-myuser --role=developer --user=myuser
+
+# Test the role to the user
+kubectl auth can-i delete pods --as myuser
+kubectl auth can-i delete deployments --as myuser
+
+# Add new credentials
+kubectl config set-credentials myuser --client-key=myuser.key --client-certificate=myuser.crt --embed-certs=true
+
+# Add context
+kubectl config set-context myuser --cluster=kubernetes --user=myuser
+
+# List contexts
+kubectl config get-context
+
+# Change context
+kubectl config use-context myuser
+```
+
 
 
