@@ -28,10 +28,11 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Restrict access to Kubernetes API](#)
    - [Upgrade Kubernetes to avoid vulnerabilities](#)
 
-3. [Storage (10%)](#3-storage-10)
-   - [Implement storage classes and dynamic volume provisioning](#implement-storage-classes-and-dynamic-volume-provisioning)
-   - [Configure volume types, access modes and reclaim policies](#configure-volume-types-access-modes-and-reclaim-policies)
-   - [Manage persistent volumes and persistent volume claims](#manage-persistent-volumes-and-persistent-volume-claims)
+3. [System Hardening (10%)](#3-storage-10)
+   - [Minimize host OS footprint (reduce attack surface)](#)
+   - [Using least-privilege identity and access management](#)
+   - [Minimize external access to the network](#)
+   - [Appropriately use kernel hardening tools such as AppArmor, seccomp](#)
 
 4. [Services & Networking (20%)](#4-services--networking-20)
    - [Understand connectivity between Pods](#understand-connectivity-between-pods)
@@ -56,7 +57,7 @@ CKs Certification Exam has the following key domains:
 
 Following are the subtopics under Cluster Setup
 
-### Network Policy.
+### Network Policy
 > [Network Policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/)  : Understand the restriction of the Pod to Pod communication.
 
 ```yaml
@@ -92,7 +93,8 @@ spec:
         except:
         - 169.254.169.254/32
 ```
-### Analyze the cluster components using CIS Benchmark tool Kube Bench.
+### CIS Benchmark
+> [CIS Benchmark]() : Analyze the cluster components using CIS Benchmark tool Kube Bench.
 ```bash
 # CIS Benchmark Best Practices
 ./kube-bench --config-dir /root/cfg --config /root/cfg/config.yaml
@@ -102,7 +104,8 @@ spec:
 ./kube-bench --config-dir /root/cfg --config /root/cfg/config.yaml --check 1.4.1
 ```
 
-### Ingress object with TLS 
+### Ingress 
+> [Ingress]() : Creating an Ingress object with the TLS termination.
 ```bash
 # Self-signed TLS Certificate & Key
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt
@@ -231,6 +234,65 @@ kubectl config get-context
 # Change context
 kubectl config use-context myuser
 ```
+
+### Role Based Access Control 
+> Bind RBAC with Service Account 
+```bash
+# Create SA
+kubectl create sa app-sa
+
+# Create Cluster Role
+kubectl create clusterrole app-cr --verb list --resource pods
+
+# Create Role Binding
+kubectl create rolebinding app-rb --clusterrole app-cr --serviceaccount default:app-sa
+
+# List Role Binding
+kubectl get rolebinding
+
+# Describe Role Binding
+kubectl describe rolebinding app-rb
+
+# Check the access
+kubectl auth can-i list pods --as system:serviceaccount:default:app-sa
+
+# Create a Pod with the Service Account
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: app-sa
+  name: app-sa
+spec:
+  serviceAccountName: app-sa
+  containers:
+  - image: nginx
+    name: app-sa
+    ports:
+    - containerPort: 80
+```
+### Service Account Token Automount
+> [Service Account](#https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/) : Disable the automounting of the Service Account Token. 
+```bash
+# Disable Service Account Token Automounting
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: app-sa
+  name: app-sa
+spec:
+  serviceAccountName: app-sa
+  automountServiceAccountToken: false
+  containers:
+  - image: nginx
+    name: app-sa
+    ports:
+    - containerPort: 80
+```
+### Upgrade Kubernetes clusters.
+> [Perform Cluster Version upgrade Using Kubeadm](https://techiescamp.com/courses/certified-kubernetes-administrator-course/lectures/55120133) : Managing the lifecycle involves upgrading clusters, managing control plane nodes, and ensuring consistency across versions.
+
 
 
 
