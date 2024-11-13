@@ -28,7 +28,7 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Restrict access to Kubernetes API](#)
    - [Upgrade Kubernetes to avoid vulnerabilities](#)
 
-3. [System Hardening (10%)](#3-storage-10)
+3. [System Hardening (10%)](#)
    - [Minimize host OS footprint (reduce attack surface)](#)
    - [Using least-privilege identity and access management](#)
    - [Minimize external access to the network](#)
@@ -49,7 +49,7 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Manage and evaluate container output streams](#manage-and-evaluate-container-output-streams)
    - [Troubleshoot services and networking](#troubleshoot-services-and-networking)
 
-## CKs Exam Detailed Study Guide & References
+## CKS Exam Detailed Study Guide & References
 
 CKs Certification Exam has the following key domains:
 
@@ -292,6 +292,9 @@ spec:
 ```
 ### Upgrade Kubernetes clusters.
 > [Perform Cluster Version upgrade Using Kubeadm](https://techiescamp.com/courses/certified-kubernetes-administrator-course/lectures/55120133) : Managing the lifecycle involves upgrading clusters, managing control plane nodes, and ensuring consistency across versions.
+
+## 3. System Hardening (10%)
+### 
 
 
 
