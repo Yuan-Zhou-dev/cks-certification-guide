@@ -34,13 +34,11 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Minimize external access to the network](#)
    - [Appropriately use kernel hardening tools such as AppArmor, seccomp](#)
 
-4. [Services & Networking (20%)](#4-services--networking-20)
-   - [Understand connectivity between Pods](#understand-connectivity-between-pods)
-   - [Define and enforce Network Policies](#define-and-enforce-network-policies)
-   - [Use ClusterIP, NodePort, LoadBalancer service types and endpoints](#use-clusterip-nodeport-loadbalancer-service-types-and-endpoints)
-   - [Use the Gateway API to manage Ingress traffic](#use-the-gateway-api-to-manage-ingress-traffic)
-   - [Know how to use Ingress controllers and Ingress resources](#know-how-to-use-ingress-controllers-and-ingress-resources)
-   - [Understand and use CoreDNS](#understand-and-use-coredns)
+4. [Minimize Microservice Vulnerabilities (20%)](#)
+   - [Use appropriate pod security standards](#)
+   - [Manage Kubernetes secrets](#)
+   - [Understand and implement isolation techniques (multi-tenancy, sandboxed containers, etc.)](#)
+   - [Implement Pod-to-Pod encryption using Cilium](#)
 
 5. [Troubleshooting (30%)](#5-troubleshooting-30)
    - [Troubleshoot clusters and nodes](#troubleshoot-clusters-and-nodes)
@@ -294,8 +292,203 @@ spec:
 > [Perform Cluster Version upgrade Using Kubeadm](https://techiescamp.com/courses/certified-kubernetes-administrator-course/lectures/55120133) : Managing the lifecycle involves upgrading clusters, managing control plane nodes, and ensuring consistency across versions.
 
 ## 3. System Hardening (10%)
-### 
+### Disable Service
+```bash
+# Stop a running service
+systemctl stop vsftpd
 
+# Check the status of the service
+systemctl status vsftpd
+```
+### Remove Unused Packages
+```bash
+# Remove the packages
+sudo apt remove vsftpd
+```
+### Disable Open Ports 
+```bash
+# Identify open ports and related processes
+ss -tlpn
 
+# Filter a process using the open port number
+ss -tlpn | grep :80
+```
 
+### Kernel Hardening using AppArmor
+```bash
+# To list the default and custom loaded profiles
+aa-status
+
+# Profile modes - 'enforce' and `complain'
+# Example profile file which is restrict the write function to nodes
+#include <tunables/global>
+
+profile k8s-apparmor-example-deny-write flags=(attach_disconnected) {
+  #include <abstractions/base>
+
+  file,
+
+  # Deny all file writes.
+  deny /** w,
+}
+
+# To load the profile ('enforce' mode is default)
+
+apparmor_parser /etc/apparmor.d/k8s-apparmor-example-deny-write
+
+# Associate the profile to a Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-apparmor
+spec:
+  securityContext:
+    appArmorProfile:
+      type: Localhost
+      localhostProfile: k8s-apparmor-example-deny-write
+  containers:
+  - name: hello
+    image: busybox:1.28
+    command: [ "sh", "-c", "echo 'Hello AppArmor!' && sleep 1h" ]
+
+```
+> Note: The profiles should be present in the worker nodes or where the workloads should be in.
+
+## 4. Minimize Microservice Vulnerabilities (20%)
+### Run Container as Non-Root User 
+```bash
+# Adding security context to run the container as non root user
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: test-pod
+  name: test-pod
+spec:
+  containers:
+  - image: bitnami/nginx
+    name: test-pod
+  securityContext:
+    runAsNonRoot: true
+```
+
+### Run a Container with Specific User ID and Group ID 
+```bash
+# Run container with specific user id and group id
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: test-pod
+  name: test-pod
+spec:
+  containers:
+  - image: busybox
+    name: test-pod
+    command: ["sh", "-c", "sleep 1d"]
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+```
+### Non Privileged Container 
+```bash
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo
+spec:
+  containers:
+  - name: sec-ctx-demo
+    image: busybox:1.28
+    command: [ "sh", "-c", "sleep 1h" ]
+    securityContext:
+      allowPrivilegeEscalation: false
+      privileged: false
+```
+### Pod Security Admission
+```bash
+# Add label to the namespace for the PSA
+k label namespace dev pod-security.kubernetes.io/enforce=restricted
+
+# Enable Pod Security Admission Plugin in the Kube Apiserver
+vim /etc/kubernetes/manifests/kube-apiserver
+
+- --enable-admission-plugins=podSecurity
+```
+### ECTD encryption
+```bash
+# Create a randon base64 encoded key
+echo -n "encryptedsecret" | base64
+
+# Create an Encryption configuration file with the encoded key
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - secrets
+    providers:
+      - identity: {}
+      - aesgcm:
+          keys:
+            - name: key1
+              secret: ZW5jcnlwdGVkc2VjcmV0
+
+# Add Encryption Provider Config parameter and volumes on the Kube Api server
+
+--encryption-provider-config=/etc/kubernetes/etcd/ec.yaml
+
+spec
+  volumes:
+  - name: ec
+    hostPath: 
+      path: /etc/kubernetes/etcd
+      type: DirectoryOrCreate
+
+  containers:
+    volumemounts:
+    - name: ec
+      mountPath: /etc/kubernetes/etcd
+      readonly: true
+
+# Wait to the Kube API server to restart
+watch crictl ps
+
+# Replace the secret
+kubectl get secret test-secret -o json | kubectl replace -f -
+
+# Check the encrypted secret 
+ETCDCTL_API=3 etcdctl \
+   --cacert=/etc/kubernetes/pki/etcd/ca.crt   \
+   --cert=/etc/kubernetes/pki/etcd/server.crt \
+   --key=/etc/kubernetes/pki/etcd/server.key  \
+   get /registry/secrets/default/test-secret | hexdump -C
+```
+### Container Runtime sandboxed
+```bash
+# Create a Runtime Class - gVisor
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+
+# Create a Pod with Runtime Class
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: rtc-pod
+  name: rtc-pod
+spec:
+  runtimeClassName: gvisor
+  containers:
+  - image: nginx
+    name: rtc-pod
+    ports:
+    - containerPort: 80
+
+# To check the container runtime
+k exec rtc-pod -- dmesg
+bash
 
