@@ -10,9 +10,6 @@ To pass the exam, candidates need to achieve a score of at least 66%.
 The exam will be on Kubernetes version 1.31.
 Once the certificate is earned, the CKS certification remains valid for 2 years. The cost to take the exam is $395 USD.
 
-<!-- >**Important Note:** The CKS exam is updating after September 15 2024, with new topics and a focus on real-world Kubernetes skills like Gateway API, Helm, Kustomize, CRDs & Operators. This guide is based on the new CKA syllabus. You can read more about the exam changes here [CKS Exam Changes](https://blog.techiescamp.com/cka-exam-updates/) -->
-
-
 ## Table of Contents
 
 1. [Cluster Setup (15%)](#)
@@ -40,22 +37,28 @@ Once the certificate is earned, the CKS certification remains valid for 2 years.
    - [Understand and implement isolation techniques (multi-tenancy, sandboxed containers, etc.)](#)
    - [Implement Pod-to-Pod encryption using Cilium](#)
 
-5. [Troubleshooting (30%)](#5-troubleshooting-30)
-   - [Troubleshoot clusters and nodes](#troubleshoot-clusters-and-nodes)
-   - [Troubleshoot cluster components](#troubleshoot-cluster-components)
-   - [Monitor cluster and application resource usage](#monitor-cluster-and-application-resource-usage)
-   - [Manage and evaluate container output streams](#manage-and-evaluate-container-output-streams)
-   - [Troubleshoot services and networking](#troubleshoot-services-and-networking)
+5. [Supply Chain Security (20%)](#)
+   - [Minimize base image footprint](#)
+   - [Understand your supply chain (e.g. SBOM, CI/CD, artifact repositories)](#)
+   - [Secure your supply chain (permitted registries, sign and validate artifacts, etc.)](#)
+   - [Perform static analysis of user workloads and container images (e.g. Kubesec, KubeLinter)](#)
+
+6. [Monitoring, Logging and Runtime Security (20%)](#)
+   - [Perform behavioral analytics to detect malicious activities](#)
+   - [Detect threats within physical infrastructure, apps, networks, data, users and workloads](#)
+   - [Investigate and identify phases of attack and bad actors within the environment](#)
+   - [Ensure immutability of containers at runtime](#)
+   - [Use Kubernetes audit logs to monitor access](#)
 
 ## CKS Exam Detailed Study Guide & References
 
-CKs Certification Exam has the following key domains:
+CKS Certification Exam has the following key domains:
 
 ## 1. Cluster Setup (15%)
 
 Following are the subtopics under Cluster Setup
 
-### Network Policy
+### Restrict Pod to Pod communication using Network Policy
 > [Network Policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/)  : Understand the restriction of the Pod to Pod communication.
 
 ```yaml
@@ -71,10 +74,10 @@ spec:
   - Ingress
   - Egress
 ```
-
+### Protecting Metadata Server access to the cloud provider Kubernetes cluster using Network Policy
+> [Network Policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/)  : Understand the IP Block parameter in the Network Policy.
 ```yaml
-# Protecting Metadata Server access to the cloud provider Kubernetes cluster using Network Policy
-
+# Create a Network Policy with the IP Block
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -91,7 +94,7 @@ spec:
         except:
         - 169.254.169.254/32
 ```
-### CIS Benchmark
+### CIS Benchmark to analyze the cluster components
 > [CIS Benchmark]() : Analyze the cluster components using CIS Benchmark tool Kube Bench.
 ```bash
 # CIS Benchmark Best Practices
@@ -102,18 +105,18 @@ spec:
 ./kube-bench --config-dir /root/cfg --config /root/cfg/config.yaml --check 1.4.1
 ```
 
-### Ingress 
-> [Ingress]() : Creating an Ingress object with the TLS termination.
+### Secure the Ingress with TLS
+> [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) : Creating an Ingress object with the TLS termination.
 ```bash
-# Self-signed TLS Certificate & Key
+# Create a TLS Certificate & Key
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt
 ```
 ```bash
-# Create a TLS secret with Certificat & Key
+# Create a TLS secret with Certificate & Key
 kubectl -n tls create secret tls tls-secret --cert=tls.crt --key=tls.key
 ```
 ```yaml
-# Create Ingress with TLS
+# Create Ingress object with TLS
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -122,6 +125,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: nginx
 	tls:
   - hosts:
       - dev.techiescamp.com
@@ -130,42 +134,44 @@ spec:
   - host: dev.techiescamp.com
     http:
       paths:
-      - path: /app
+      - path: /frontend
         pathType: Prefix
         backend:
           service:
-            name: app
+            name: frontend
             port:
               number: 80
-      - path: /api
+      - path: /backend
         pathType: Prefix
         backend:
           service:
-            name: api
+            name: backend
             port:
               number: 80
-
 ```
-### Verify Kubernetes Platform Binaries
+### Verify Kubernetes Platform Binaries before deploying
 
 ```bash
-# Verify the Platform Binaries using Hash
-
+# Check the current version of the Kubernetes component
 kubectl --version
 
+# Check the current binary hash value
 sha512sum $(which kubectl)
 
+# Download the cluster component
 wget https://dl.k8s.io/v1.31.0/kubernetes-server-linux-amd64.tar.gz
 
+# Extract the package
 tar -xvf kubernetes-server-linux-amd64.tar.gz
 
+# Verify the Platform Binaries using Hash
 sha512sum kubernetes/server/bin/kubelet
 ```
 
 ## 2. Cluster Hardening (15%)
 
 ### RBAC, Certificate & Certificate Signing Request
-
+> [Certificates and Certificate Signing Request](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/) : Create and issue a certificate for user
 ```bash
 # Create private key
 openssl genrsa -out myuser.key 2048
@@ -490,5 +496,266 @@ spec:
 
 # To check the container runtime
 k exec rtc-pod -- dmesg
-bash
+```
+
+### Cilium Network Policy 
+```bash
+# Crete Cilium Network Policy to all outgoing traffic to a particular namespace and particular label
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: frontend
+  namespace: frontend
+spec:
+  endpointSelector:
+    matchLabels: {}
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        io.kubernetes.pod.namespace: backend
+        run: b-pod-1
+```
+
+
+
+## 5. Supply Chain Security (20%)
+
+### Image Digest to run a Pod
+```bash
+# Run a Pod using the image digest
+k run digest-pod --image nginx@sha256:5ddf6decf65ea64c0492cd38098a9db11cb0da682478d3e0cfa8cdfdeb112f30
+
+# To get the image digest of a Pod
+k describe pod dig-pod | grep -iE "Image ID"
+```
+
+### Image Policy Webhook Admission Controller Plugin
+```bash
+# Create Admission Controller configuration file
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: ImagePolicyWebhook
+    configuration:
+      imagePolicy:
+        kubeConfigFile: <path-to-kubeconfig-file>
+        allowTTL: 50
+        denyTTL: 50
+        retryBackoff: 500
+        defaultAllow: false
+
+# Find the kubeconf
+find / -name kubeconf
+
+# Update the Admission controller configuration
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: ImagePolicyWebhook
+    configuration:
+      imagePolicy:
+        kubeConfigFile: /etc/kubernetes/policywebhook/kubeconf
+        allowTTL: 50
+        denyTTL: 50
+        retryBackoff: 500
+        defaultAllow: false
+
+# Image Policy configuration file
+apiVersion: v1
+kind: Config
+preferences: {}
+clusters:
+- name: image-check-webhook
+  cluster:
+    certificate-authority: /etc/kubernetes/policywebhook/external-cert.pem 
+    server: https://localhost:1234    
+contexts:
+- context:
+    cluster: image-checker-webhook
+    user: api-server
+  name: image-checker-webhook
+current-context: image-checker-webhook
+
+users:
+- name: api-server
+  user:
+    client-certificate: /etc/kubernetes/policywebhook/apiserver-client-cert.pem 
+    client-key:  /etc/kubernetes/policywebhook/apiserver-client-key.pem          
+
+# Add Image Policy Webhook on the Admission Control Plugin parameter
+
+vim /etc/kubernetes/manifests/kube-apiserver
+
+--enable-admission-plugins=ImagePolicyWebhook
+--admission-control-config-file=/etc/kubernetes/policywebhook/admission-config.yaml
+```
+> Note: Admission Configuration could be in JSON format as well
+
+### Scan Kubernetes manifests using Kubesec
+```bash
+# Scan manifest using binary
+kubesec scan pod.yaml
+
+# Scan using Kubesec docker image
+docker run -i kubesec/kubesec:512c5e0 scan /dev/stdin < pod.yaml
+```
+### Identity Image vulnerabilities using Trivy
+```bash
+# Scan container image using Trivy
+trivy image ubuntu:22.04
+```
+## 6. Monitoring, Logging and Runtime Security (20%)
+### Behavior analysis using Falco
+```bash
+# Check the Falco status
+systemctl status falco
+
+# Override existing rules before modifying 
+cp /etc/falco/falco_rules.yaml /etc/falco/falco_rules.local.yaml
+
+# Edit the rule and restart the service
+systemctl restart falco
+
+# Create a Pod and execuite the shell for testing
+k run test-pod --image nginx
+
+k exec test-pod -- sh
+
+# Check the falo logs
+journalctl -fu falco
+cat /var/log/syslog | grep falco
+```
+
+### Make Secret as environment variable inside the Pod
+```bash
+# Create a secret
+k create secret generic secret-1 --from-literal password=admin@123
+
+# Create Secret as environment variable
+apiVersion: v1
+kind: Pod
+metadata:
+  name: env-single-secret
+spec:
+  containers:
+  - name: envars-test-container
+    image: nginx
+    env:
+    - name: SECRET_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: secret-1
+          key: password
+
+# To check the secret inside the Pod
+k exec -it env-single-secret -- env
+```
+
+### Mount Secret as Volume 
+```bash
+# Mount secret as volume in the Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-secret-pod
+spec:
+  volumes:
+    - name: secret-volume
+      secret:
+        secretName: secret-2
+  containers:
+    - name: nginx
+      image: nginx
+      volumeMounts:
+        - name: secret-volume
+          readOnly: true
+          mountPath: "/etc/secret-volume"
+
+# To check the mounted secret
+k exec -it volume-secret-pod -- ls /etc/secret/volume
+```
+
+### Make the container immutable using the read only root file system 
+```bash
+# Create a Pod with ReadOnlyRooFileSystem security context
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: immutable-pod
+  name: immutable-pod
+spec:
+  containers:
+  - image: nginx
+    name: immutable-pod
+    securityContext:
+      readOnlyRootFilesystem: true
+```
+> Note: If the container needs to write something then if we are using the Read only root file system, the Pod won't work properly so to resolve this we need to create and mount an empty dir.
+```bash
+# Immutable deployment
+“apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.21.6
+    securityContext:
+      readOnlyRootFilesystem: true
+    volumeMounts:
+    - name: nginx-run
+      mountPath: /var/run
+  volumes:
+  - name: nginx-run
+    emptyDir: {}
+```
+
+### Audit Policy
+```bash
+# Create and modify the Audit Policy configuration file
+apiVersion: audit.k8s.io/v1 
+kind: Policy
+omitStages:
+  - "RequestReceived"
+rules:
+  - level: RequestResponse
+    resources:
+    - group: ""
+      resources: ["pods"]
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["pods/log", "pods/status"]
+
+# Create a directory to store the log files.
+mkdir /var/log/kubernetes/audit
+
+# Add flags on the Kube API server manifest 
+- --audit-policy-file=/etc/kubernetes/audit-policy.yaml
+- --audit-log-path=/var/log/kubernetes/audit/audit.log
+- --audit-log-maxage=
+- --audit-log-maxbackup=
+- --audit-log-maxsize=
+
+# Mount volumes
+volumeMounts:
+  - mountPath: /etc/kubernetes/audit-policy.yaml
+    name: audit
+    readOnly: true
+  - mountPath: /var/log/kubernetes/audit/
+    name: audit-log
+    readOnly: false
+
+volumes:
+- name: audit
+  hostPath:
+    path: /etc/kubernetes/audit-policy.yaml
+    type: File
+- name: audit-log
+  hostPath:
+    path: /var/log/kubernetes/audit/
+    type: DirectoryOrCreate
+```
 
