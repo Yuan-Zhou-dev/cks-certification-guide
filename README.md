@@ -239,8 +239,8 @@ kubectl config get-context
 kubectl config use-context myuser
 ```
 
-### Role Based Access Control 
-> Bind RBAC with Service Account 
+### Role Based Access Control
+> [Bind RBAC with Service Account](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) : Understand the Role Based Access Control Authorization to Service Accounts
 ```bash
 # Create SA
 kubectl create sa app-sa
@@ -293,6 +293,19 @@ spec:
     name: app-sa
     ports:
     - containerPort: 80
+```
+### Disable the Service Account Token Automount at the Service Account level
+```bash
+# Create a new Service Account or edit an existing Service Account
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: two
+
+# To check the automouting after the Pod deployment
+k exec test-pod -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
 ### Upgrade Kubernetes clusters.
 > [Perform Cluster Version upgrade Using Kubeadm](https://techiescamp.com/courses/certified-kubernetes-administrator-course/lectures/55120133) : Managing the lifecycle involves upgrading clusters, managing control plane nodes, and ensuring consistency across versions.
