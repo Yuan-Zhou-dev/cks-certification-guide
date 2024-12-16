@@ -331,15 +331,30 @@ ss -tlpn
 
 # Filter a process using the open port number
 ss -tlpn | grep :80
+
+# List the Open files for the Port and the Process IDs
+lsof -i :80
+
+# Check the path of the packege
+ls -l /proc/12345/exe
+
+# Kill the process using the PID
+kill 12345
+
+# Remove the packege
+rm /usr/bin/app01
 ```
 
 ### Kernel Hardening using AppArmor
+>[Restrict container access to resources](https://kubernetes.io/docs/tutorials/security/apparmor/) : Minimize the container access to reduce the access to the host resources.
 ```bash
 # To list the default and custom loaded profiles
 aa-status
 
 # Profile modes - 'enforce' and `complain'
 # Example profile file which is restrict the write function to nodes
+
+
 #include <tunables/global>
 
 profile k8s-apparmor-example-deny-write flags=(attach_disconnected) {
@@ -375,6 +390,7 @@ spec:
 
 ## 4. Minimize Microservice Vulnerabilities (20%)
 ### Run Container as Non-Root User 
+> [Security context to enable non-root containers](https://kubernetes.io/docs/concepts/security/pod-security-standards/) : Understand how to run a container with a non-root user.
 ```bash
 # Adding security context to run the container as non root user
 apiVersion: v1
@@ -392,6 +408,7 @@ spec:
 ```
 
 ### Run a Container with Specific User ID and Group ID 
+> [Run a container with specifice user](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) : Learn to deploy a container with least privilege and high security.
 ```bash
 # Run container with specific user id and group id
 apiVersion: v1
@@ -409,9 +426,10 @@ spec:
     runAsUser: 1000
     runAsGroup: 1000
 ```
-### Non Privileged Container 
+### Create a Pod with lease privileges
+> [Disable privilege escalation to a Pod](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) : Prevent containers from unauthorized access.
 ```bash
-#
+# Create a container with least privileges
 apiVersion: v1
 kind: Pod
 metadata:
