@@ -444,6 +444,7 @@ spec:
       privileged: false
 ```
 ### Pod Security Admission
+> [Enable Pod Secuurity Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) : Enforce the Pod Security Standards using Pod Security Admission.
 ```bash
 # Add label to the namespace for the PSA
 k label namespace dev pod-security.kubernetes.io/enforce=restricted
@@ -454,6 +455,7 @@ vim /etc/kubernetes/manifests/kube-apiserver
 - --enable-admission-plugins=podSecurity
 ```
 ### ECTD encryption
+> [Encrypt the data at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) : Secure the confidential data by encrypting.
 ```bash
 # Create a randon base64 encoded key
 echo -n "encryptedsecret" | base64
@@ -465,11 +467,11 @@ resources:
   - resources:
       - secrets
     providers:
-      - identity: {}
       - aesgcm:
           keys:
             - name: key1
               secret: ZW5jcnlwdGVkc2VjcmV0
+      - identity: {}
 
 # Add Encryption Provider Config parameter and volumes on the Kube Api server
 
