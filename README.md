@@ -504,6 +504,7 @@ ETCDCTL_API=3 etcdctl \
    get /registry/secrets/default/test-secret | hexdump -C
 ```
 ### Container Runtime sandboxed
+> [Runtime Class](https://kubernetes.io/docs/concepts/containers/runtime-class/) : Improve isolation and security using sandbox container runtimes for important workloads
 ```bash
 # Create a Runtime Class - gVisor
 apiVersion: node.k8s.io/v1
@@ -532,6 +533,7 @@ k exec rtc-pod -- dmesg
 ```
 
 ### Cilium Network Policy 
+> [Endpoint Based Network Policy](https://docs.cilium.io/en/latest/security/policy/language/#endpoints-based) : Configure Cilium Network Policy to enable Pod to Pod encryption.
 ```bash
 # Crete Cilium Network Policy to all outgoing traffic to a particular namespace and particular label
 apiVersion: "cilium.io/v2"
@@ -548,12 +550,10 @@ spec:
         io.kubernetes.pod.namespace: backend
         run: b-pod-1
 ```
-
-
-
 ## 5. Supply Chain Security (20%)
 
 ### Image Digest to run a Pod
+> [Run a Pod with Image Digest](https://kubernetes.io/docs/concepts/containers/images/) : Ensure the immutability and consistency of pulling the same image version using image digest.
 ```bash
 # Run a Pod using the image digest
 k run digest-pod --image nginx@sha256:5ddf6decf65ea64c0492cd38098a9db11cb0da682478d3e0cfa8cdfdeb112f30
@@ -563,6 +563,7 @@ k describe pod dig-pod | grep -iE "Image ID"
 ```
 
 ### Image Policy Webhook Admission Controller Plugin
+> [Admission Control](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) : Enforce the custom image validation policies through external webhook to improve security and complaince.
 ```bash
 # Create Admission Controller configuration file
 apiVersion: apiserver.config.k8s.io/v1
@@ -577,10 +578,10 @@ plugins:
         retryBackoff: 500
         defaultAllow: false
 
-# Find the kubeconf
+# Find the kubeconf path
 find / -name kubeconf
 
-# Update the Admission controller configuration
+# Update the Admission controller configuration and kubeconf path
 apiVersion: apiserver.config.k8s.io/v1
 kind: AdmissionConfiguration
 plugins:
@@ -615,7 +616,7 @@ users:
     client-certificate: /etc/kubernetes/policywebhook/apiserver-client-cert.pem 
     client-key:  /etc/kubernetes/policywebhook/apiserver-client-key.pem          
 
-# Add Image Policy Webhook on the Admission Control Plugin parameter
+# Enable and configure Image Policy Admission Plugin
 
 vim /etc/kubernetes/manifests/kube-apiserver
 
@@ -633,12 +634,18 @@ kubesec scan pod.yaml
 docker run -i kubesec/kubesec:512c5e0 scan /dev/stdin < pod.yaml
 ```
 ### Identity Image vulnerabilities using Trivy
+> [Trivy](https://trivy.dev/latest/docs/target/container_image/) :
+Scan the container image using Trivy to identify the vulnerabilities.
 ```bash
 # Scan container image using Trivy
 trivy image ubuntu:22.04
+
+# Scan the image and filter the vulnerabilites based on the severity
+trivy image --severity HIGH,CRITICAL nginx:1.19.1-alpine-perl 
 ```
 ## 6. Monitoring, Logging and Runtime Security (20%)
 ### Behavior analysis using Falco
+> [Monitor and alert suspicious behavior in kubernets](https://falco.org/docs/reference/rules/supported-fields/) : Monitor runtime security threats and create alerts to inform the suspicios behavior.
 ```bash
 # Check the Falco status
 systemctl status falco
@@ -656,10 +663,12 @@ k exec test-pod -- sh
 
 # Check the falo logs
 journalctl -fu falco
+
 cat /var/log/syslog | grep falco
 ```
 
 ### Make Secret as environment variable inside the Pod
+> [Secret as Env](https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/) : Access the secret as environment variable inside the container.
 ```bash
 # Create a secret
 k create secret generic secret-1 --from-literal password=admin@123
@@ -685,6 +694,7 @@ k exec -it env-single-secret -- env
 ```
 
 ### Mount Secret as Volume 
+> [Mount secret as volume](https://kubernetes.io/docs/concepts/configuration/secret/) : Mount the Secret as volume to improve the security and dynamic updates.
 ```bash
 # Mount secret as volume in the Pod
 apiVersion: v1
@@ -709,6 +719,7 @@ k exec -it volume-secret-pod -- ls /etc/secret/volume
 ```
 
 ### Make the container immutable using the read only root file system 
+> [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) : Prevent the container root file system from the modification. 
 ```bash
 # Create a Pod with ReadOnlyRooFileSystem security context
 apiVersion: v1
@@ -746,6 +757,7 @@ spec:
 ```
 
 ### Audit Policy
+> [Audit Policy](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/) : Learn how to Monitor and log the cluster activities
 ```bash
 # Create and modify the Audit Policy configuration file
 apiVersion: audit.k8s.io/v1 
@@ -772,7 +784,7 @@ mkdir /var/log/kubernetes/audit
 - --audit-log-maxbackup=
 - --audit-log-maxsize=
 
-# Mount volumes
+# Mount volumes of the Policy file and log path
 volumeMounts:
   - mountPath: /etc/kubernetes/audit-policy.yaml
     name: audit
