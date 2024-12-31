@@ -650,6 +650,9 @@ trivy image --severity HIGH,CRITICAL nginx:1.19.1-alpine-perl
 # Check the Falco status
 systemctl status falco
 
+# To list the Falco parameters
+falco --list
+
 # Override existing rules before modifying 
 cp /etc/falco/falco_rules.yaml /etc/falco/falco_rules.local.yaml
 
