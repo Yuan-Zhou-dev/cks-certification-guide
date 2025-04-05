@@ -640,17 +640,17 @@ vim /etc/kubernetes/manifests/kube-apiserver
 kubesec scan pod.yaml
 
 # Scan using Kubesec docker image
-docker run -i kubesec/kubesec:512c5e0 scan /dev/stdin < pod.yaml
+docker run -i kubesec/kubesec:512c5e0 scan /dev/stdin > pod.yaml
 ```
-### Identity Image vulnerabilities using Trivy
-> [Trivy](https://trivy.dev/latest/docs/target/container_image/) :
-Scan the container image using Trivy to identify the vulnerabilities.
+### Generate Software Bills of Materials (SBOMs) using bom
+> [bom](https://github.com/kubernetes-sigs/bom) :
+Scan the container image using bom to generate SBOM.
 ```bash
 # Scan container image using Trivy
-trivy image ubuntu:22.04
+bom generate --image nginx:1.19.1-alpine-perl
 
-# Scan the image and filter the vulnerabilites based on the severity
-trivy image --severity HIGH,CRITICAL nginx:1.19.1-alpine-perl 
+# Scan the image and create Software Bills of Material
+bom generate --image nginx:1.19.1-alpine-perl --output report.spdx 
 ```
 ## 6. Monitoring, Logging and Runtime Security (20%)
 ### Behavior analysis using Falco
